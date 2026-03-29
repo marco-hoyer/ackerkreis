@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum VotingRoundStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  COMPLETED
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BlogEntryStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model DistributionCenter {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  description String?
+  latitude    Float?
+  longitude   Float?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  subscriptions Subscription[]
+  applications  Application[]
+
+  @@map("distribution_centers")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  subscriptionId       String             @unique @map("subscription_id") // S0001 format
+  distributionCenterId String             @map("distribution_center_id")
+  status               SubscriptionStatus @default(ACTIVE)
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  distributionCenter DistributionCenter @relation(fields: [distributionCenterId], references: [id])
+  users              User[]
+  votes              Vote[]
+  transactions       BankTransaction[]
+
+  @@map("subscriptions")
+}
+
+model User {
+  id             String    @id @default(uuid())
+  email          String    @unique
+  name           String
+  role           UserRole  @default(MEMBER)
+  subscriptionId String?   @map("subscription_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  votes        Vote[]
+  sessions     AuthSession[]
+  passkeys     Passkey[]
+  blogEntries  BlogEntry[]
+  recipes      Recipe[]
+  reviewedApps Application[] @relation("ReviewedBy")
+
+  @@map("users")
+}
+
+model VotingRound {
+  id           String            @id @default(uuid())
+  year         Int               @unique
+  targetIncome Decimal           @map("target_income") @db.Decimal(12, 2)
+  status       VotingRoundStatus @default(DRAFT)
+  startDate    DateTime?         @map("start_date")
+  endDate      DateTime?         @map("end_date")
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  votes Vote[]
+
+  @@map("voting_rounds")
+}
+
+model Vote {
+  id             String   @id @default(uuid())
+  subscriptionId String   @map("subscription_id")
+  userId         String   @map("user_id")
+  votingRoundId  String   @map("voting_round_id")
+  amount         Decimal  @db.Decimal(10, 2) // Monthly amount willing to pay
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+  votingRound  VotingRound  @relation(fields: [votingRoundId], references: [id])
+
+  @@unique([subscriptionId, votingRoundId]) // One vote per subscription per round
+  @@map("votes")
+}
+
+model Application {
+  id                   String            @id @default(uuid())
+  name                 String
+  email                String
+  phone                String?
+  message              String
+  distributionCenterId String            @map("distribution_center_id")
+  status               ApplicationStatus @default(PENDING)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  reviewedAt           DateTime?         @map("reviewed_at")
+  reviewedBy           String?           @map("reviewed_by")
+
+  distributionCenter DistributionCenter @relation(fields: [distributionCenterId], references: [id])
+  reviewer           User?              @relation("ReviewedBy", fields: [reviewedBy], references: [id])
+
+  @@map("applications")
+}
+
+model BlogEntry {
+  id          String          @id @default(uuid())
+  title       String
+  slug        String          @unique
+  excerpt     String?
+  content     String
+  authorId    String          @map("author_id")
+  status      BlogEntryStatus @default(DRAFT)
+  publishedAt DateTime?       @map("published_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("blog_entries")
+}
+
+model Recipe {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  ingredients  Json     // Array of ingredients
+  instructions String
+  authorId     String   @map("author_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  author User @relation(fields: [authorId], references: [id])
+
+  @@map("recipes")
+}
+
+model BankTransaction {
+  id             String   @id @default(uuid())
+  date           DateTime
+  amount         Decimal  @db.Decimal(10, 2)
+  description    String
+  subscriptionId String?  @map("subscription_id")
+  matched        Boolean  @default(false)
+  importedAt     DateTime @default(now()) @map("imported_at")
+  importBatchId  String   @map("import_batch_id")
+
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  @@map("bank_transactions")
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+}
+
+model MagicLink {
+  id        String    @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email, code])
+  @@map("magic_links")
+}
+
+model Passkey {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  credentialId String   @unique @map("credential_id")
+  publicKey    Bytes    @map("public_key")
+  counter      Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("passkeys")
+}
