@@ -3,7 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CreateBlogEntryDto } from './dto/create-blog-entry.dto';
 import { UpdateBlogEntryDto } from './dto/update-blog-entry.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class BlogService {
@@ -163,7 +163,7 @@ export class BlogService {
         select: { email: true },
       });
 
-      const emails = users.map((u) => u.email);
+      const emails = users.map((u: Pick<User, 'email'>) => u.email);
       if (emails.length > 0) {
         await this.emailService.sendBlogPublishedNotification(emails, entry.title, published.slug);
       }

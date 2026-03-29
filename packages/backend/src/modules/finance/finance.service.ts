@@ -4,6 +4,7 @@ import { CsvParserService } from './csv-parser.service';
 import { TransactionMatcherService } from './transaction-matcher.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { v4 as uuidv4 } from 'uuid';
+import type { Vote, BankTransaction } from '@prisma/client';
 
 @Injectable()
 export class FinanceService {
@@ -121,7 +122,7 @@ export class FinanceService {
     });
 
     const expectedMonthly = votingRound
-      ? votingRound.votes.reduce((sum, v) => sum.add(v.amount), new Decimal(0))
+      ? votingRound.votes.reduce((sum: Decimal, v: Vote) => sum.add(v.amount), new Decimal(0))
       : new Decimal(0);
 
     const currentMonth = new Date().getMonth() + 1;
@@ -145,7 +146,7 @@ export class FinanceService {
     ]);
 
     const actualIncome = matchedTransactions.reduce(
-      (sum, t) => sum.add(t.amount),
+      (sum: Decimal, t: BankTransaction) => sum.add(t.amount),
       new Decimal(0),
     );
 
@@ -186,7 +187,7 @@ export class FinanceService {
       const monthlyAmount = subscription.votes[0]?.amount || new Decimal(0);
       const expectedAmount = monthlyAmount.mul(currentMonth);
       const totalPaid = subscription.transactions.reduce(
-        (sum, t) => sum.add(t.amount),
+        (sum: Decimal, t: BankTransaction) => sum.add(t.amount),
         new Decimal(0),
       );
       const balance = totalPaid.sub(expectedAmount);

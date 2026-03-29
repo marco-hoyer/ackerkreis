@@ -4,6 +4,7 @@ import { SubscriptionIdGenerator } from './subscription-id.generator';
 import { CreateSubscriptionDto } from './dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { BankTransaction } from '@prisma/client';
 
 @Injectable()
 export class SubscriptionsService {
@@ -132,7 +133,7 @@ export class SubscriptionsService {
     });
 
     const totalPaid = transactions.reduce(
-      (sum, t) => sum.add(t.amount),
+      (sum: Decimal, t: BankTransaction) => sum.add(t.amount),
       new Decimal(0),
     );
 

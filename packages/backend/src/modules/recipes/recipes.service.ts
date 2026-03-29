@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateRecipeDto } from './dto/create-recipe.dto';
 import { UpdateRecipeDto } from './dto/update-recipe.dto';
+import type { Recipe } from '@prisma/client';
 
 @Injectable()
 export class RecipesService {
@@ -18,7 +19,7 @@ export class RecipesService {
       });
 
       // Filter recipes that contain ALL specified ingredients
-      const filtered = allRecipes.filter((recipe) => {
+      const filtered = allRecipes.filter((recipe: Recipe & { author: { id: string; name: string } }) => {
         const recipeIngredients = (recipe.ingredients as string[]).map((i) =>
           i.toLowerCase(),
         );

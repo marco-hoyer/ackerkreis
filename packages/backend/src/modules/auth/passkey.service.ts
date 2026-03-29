@@ -10,7 +10,9 @@ import {
 import type {
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
+  AuthenticatorTransportFuture,
 } from '@simplewebauthn/types';
+import type { Passkey } from '@prisma/client';
 
 // In-memory challenge store (use Redis in production)
 const challengeStore = new Map<string, string>();
@@ -49,16 +51,15 @@ export class PasskeyService {
       throw new BadRequestException('Benutzer nicht gefunden');
     }
 
-    const existingPasskeys = user.passkeys.map((pk) => ({
-      id: base64UrlToBuffer(pk.credentialId),
-      type: 'public-key' as const,
-      transports: ['internal', 'hybrid'] as AuthenticatorTransport[],
+    const existingPasskeys = user.passkeys.map((pk: Passkey) => ({
+      id: pk.credentialId,
+      transports: ['internal', 'hybrid'] as AuthenticatorTransportFuture[],
     }));
 
     const options = await generateRegistrationOptions({
       rpName: this.rpName,
       rpID: this.rpID,
-      userID: user.id,
+      userID: new TextEncoder().encode(user.id),
       userName: user.email,
       userDisplayName: user.name,
       attestationType: 'none',
@@ -94,15 +95,15 @@ export class PasskeyService {
         throw new BadRequestException('Passkey-Registrierung fehlgeschlagen');
       }
 
-      const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+      const { credential } = verification.registrationInfo;
 
-      // Store passkey - convert Uint8Array to base64url string for storage
+      // Store passkey - credential.id is already base64url encoded in v13
       await this.prisma.passkey.create({
         data: {
           userId,
-          credentialId: bufferToBase64Url(credentialID),
-          publicKey: Buffer.from(credentialPublicKey),
-          counter,
+          credentialId: credential.id,
+          publicKey: Buffer.from(credential.publicKey),
+          counter: credential.counter,
         },
       });
 
@@ -116,7 +117,7 @@ export class PasskeyService {
   }
 
   async startAuthentication(email?: string) {
-    let allowCredentials: { id: Uint8Array; type: 'public-key'; transports?: AuthenticatorTransport[] }[] | undefined;
+    let allowCredentials: { id: string; transports?: AuthenticatorTransportFuture[] }[] | undefined;
 
     if (email) {
       const user = await this.prisma.user.findUnique({
@@ -125,10 +126,9 @@ export class PasskeyService {
       });
 
       if (user && user.passkeys.length > 0) {
-        allowCredentials = user.passkeys.map((pk) => ({
-          id: base64UrlToBuffer(pk.credentialId),
-          type: 'public-key' as const,
-          transports: ['internal', 'hybrid'] as AuthenticatorTransport[],
+        allowCredentials = user.passkeys.map((pk: Passkey) => ({
+          id: pk.credentialId,
+          transports: ['internal', 'hybrid'] as AuthenticatorTransportFuture[],
         }));
       }
     }
@@ -170,9 +170,9 @@ export class PasskeyService {
         expectedChallenge,
         expectedOrigin: this.origin,
         expectedRPID: this.rpID,
-        authenticator: {
-          credentialID: base64UrlToBuffer(passkey.credentialId),
-          credentialPublicKey: passkey.publicKey,
+        credential: {
+          id: passkey.credentialId,
+          publicKey: passkey.publicKey,
           counter: passkey.counter,
         },
       });

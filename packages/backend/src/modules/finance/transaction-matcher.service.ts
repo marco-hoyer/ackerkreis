@@ -43,8 +43,8 @@ export class TransactionMatcherService {
       select: { id: true, subscriptionId: true },
     });
 
-    const subscriptionMap = new Map(
-      subscriptions.map((s) => [s.subscriptionId, s.id]),
+    const subscriptionMap = new Map<string, string>(
+      subscriptions.map((s: { id: string; subscriptionId: string }) => [s.subscriptionId, s.id]),
     );
 
     for (let i = 0; i < descriptions.length; i++) {

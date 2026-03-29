@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import type { Vote } from '@prisma/client';
 
 export interface VotingStats {
   targetIncome: number;
@@ -29,7 +30,7 @@ export class VotingStatsService {
     }
 
     const totalVotedMonthly = round.votes.reduce(
-      (sum, vote) => sum.add(vote.amount),
+      (sum: Decimal, vote: Vote) => sum.add(vote.amount),
       new Decimal(0),
     );
 
