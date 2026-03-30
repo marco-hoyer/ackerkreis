@@ -4,18 +4,19 @@
   "private": true,
   "description": "Management system for a solidarity farming community",
   "scripts": {
-    "dev": "turbo run dev",
-    "build": "turbo run build",
-    "test": "turbo run test",
-    "lint": "turbo run lint",
+    "dev": "pnpm --filter ./app dev",
+    "build": "pnpm --filter ./app build",
+    "start": "pnpm --filter ./app start",
+    "lint": "pnpm --filter ./app lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
-    "db:migrate": "pnpm --filter backend db:migrate",
-    "db:generate": "pnpm --filter backend db:generate",
-    "db:seed": "pnpm --filter backend db:seed"
+    "db:migrate": "pnpm --filter ./app db:migrate",
+    "db:migrate:deploy": "pnpm --filter ./app db:migrate:deploy",
+    "db:generate": "pnpm --filter ./app db:generate",
+    "db:seed": "pnpm --filter ./app db:seed",
+    "db:studio": "pnpm --filter ./app db:studio"
   },
   "devDependencies": {
-    "prettier": "^3.4.0",
-    "turbo": "^2.3.0"
+    "prettier": "^3.4.0"
   },
   "packageManager": "pnpm@9.15.0",
   "engines": {

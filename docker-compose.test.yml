@@ -19,46 +19,31 @@ services:
     networks:
       - solawi-test-network
 
-  backend:
+  app:
     build:
-      context: ./packages/backend
-      dockerfile: ../../docker/backend/Dockerfile
-    container_name: solawi-backend-test
+      context: .
+      dockerfile: Dockerfile
+    container_name: solawi-app-test
     environment:
       DATABASE_URL: postgresql://solawi:solawi_test@postgres:5432/solawi_manager_test
-      JWT_SECRET: test-secret
+      NEXT_PUBLIC_URL: http://localhost:3001
       SESSION_EXPIRY_DAYS: 30
       MAGIC_LINK_EXPIRY_MINUTES: 15
       SMTP_HOST: mailhog
       SMTP_PORT: 1025
       EMAIL_FROM: noreply@solawi-manager.local
-      FRONTEND_URL: http://localhost:3001
       WEBAUTHN_RP_NAME: Solawi Manager Test
       WEBAUTHN_RP_ID: localhost
       WEBAUTHN_ORIGIN: http://localhost:3001
     ports:
-      - "4001:4000"
+      - "3001:3000"
     depends_on:
       postgres:
         condition: service_healthy
     command: >
       sh -c "npx prisma migrate deploy &&
              npx prisma db seed &&
-             node dist/main.js"
-    networks:
-      - solawi-test-network
-
-  frontend:
-    build:
-      context: ./packages/frontend
-      dockerfile: ../../docker/frontend/Dockerfile
-    container_name: solawi-frontend-test
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:4001/api/v1
-    ports:
-      - "3001:3000"
-    depends_on:
-      - backend
+             node server.js"
     networks:
       - solawi-test-network
 
